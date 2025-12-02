@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fish Quality Digital Twin - QR Enhanced</title>
+    <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            background-color: #f0f4f8;
+        }
+        #viewer-container {
+            flex: 2; /* Takes up 2/3 of the screen */
+            background-color: #ffffff;
+            /* Placeholder for your existing 3D viewer style/implementation */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            color: #333;
+            border-right: 2px solid #ddd;
+        }
+        #info-panel {
+            flex: 1; /* Takes up 1/3 of the screen */
+            padding: 20px;
+            background-color: #e3f2fd;
+            display: flex;
+            flex-direction: column;
+        }
+        #qr-reader-container {
+            width: 100%;
+            height: 300px;
+            margin-bottom: 20px;
+            border: 2px solid #03a9f4;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .data-card {
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        .data-card h3 {
+            margin-top: 0;
+            color: #03a9f4;
+        }
+        .quality-status.good { color: green; font-weight: bold; }
+        .quality-status.warning { color: orange; font-weight: bold; }
+        .quality-status.bad { color: red; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div id="viewer-container">
+        <p>3D Digital Twin Viewer for <span id="current-fish-id">...</span></p>
+    </div>
+
+    <div id="info-panel">
+        <div id="qr-reader-container"></div>
+        
+        <h2>🐟 Fish Quality Data</h2>
+
+        <div id="status-display" class="data-card">
+            <h3>Status:</h3>
+            <p id="fish-quality-status" class="quality-status warning">Scan QR Code to load data.</p>
+        </div>
+
+        <div id="details-card" class="data-card">
+            <h3>Details:</h3>
+            <p>ID: <span id="detail-id">N/A</span></p>
+            <p>Temperature: <span id="detail-temp">N/A</span></p>
+            <p>pH Level: <span id="detail-ph">N/A</span></p>
+            <p>Days Since Catch: <span id="detail-days">N/A</span></p>
+        </div>
+
+    </div>
+
+    <script>
+        const qrCodeId = "qr-reader-container";
+        const html5QrCode = new Html5Qrcode(qrCodeId);
+
+        // --- Simulated Data Source for Demonstration ---
+        // In a real application, this would be an AJAX call to your backend API
+        // using the scanned FishID.
+        const FISH_DATA_MOCK = {
+            "FISH001": {
+                temp: "2.5 °C",
+                ph: 6.8,
+                days: 1,
+                status: "GOOD"
+            },
+            "FISH002": {
+                temp: "5.1 °C",
+                ph: 7.5,
+                days: 3,
+                status: "WARNING"
+            },
+            "FISH003": {
+                temp: "8.0 °C",
+                ph: 8.1,
+                days: 5,
+                status: "BAD"
+            }
+        };
+        // ---------------------------------------------
+
+        const qrConfig = {
+            fps: 10,
+            qrbox: { width: 250, height: 250 }
+        };
+
+        function onScanSuccess(decodedText, decodedResult) {
+            // Stop scanning once a QR code is successfully read
+            html5QrCode.stop().then((ignore) => {
+                console.log(`QR Code scanned successfully: ${decodedText}`);
+                
+                // 1. Extract the Fish ID
+                const fishID = decodedText; 
+                
+                // 2. Load the Digital Twin Data
+                loadDigitalTwin(fishID);
+
+                // Re-start the scanner after a short delay (or upon user interaction)
+                // For this example, we won't re-start automatically.
+            }).catch((err) => {
+                console.error("Error stopping scanner:", err);
+            });
+        }
+
+        function onScanFailure(error) {
+            // console.warn(`QR Scan error: ${error}`); // Too noisy for console
+        }
+
+        function loadDigitalTwin(fishID) {
+            const data = FISH_DATA_MOCK[fishID];
+
+            if (data) {
+                // 1. Update the Data Panel
+                document.getElementById('current-fish-id').textContent = fishID;
+                document.getElementById('detail-id').textContent = fishID;
+                document.getElementById('detail-temp').textContent = data.temp;
+                document.getElementById('detail-ph').textContent = data.ph;
+                document.getElementById('detail-days').textContent = data.days;
+
+                // 2. Update the Quality Status Indicator
+                const statusElement = document.getElementById('fish-quality-status');
+                statusElement.textContent = data.status;
+                statusElement.className = 'quality-status ' + data.status.toLowerCase();
+
+                // 3. (CRITICAL PART) Update the 3D Viewer
+                // This is where you would call a function in your existing 3D viewer
+                // to change the model's color, texture, or display a spoilage overlay
+                // based on the 'data.status' (GOOD, WARNING, BAD).
+                //
+                // Example: update3DModelVisuals(fishID, data.status);
+                
+                // For now, we will just log the intended action:
+                console.log(`*** ACTION: Update 3D Model for ${fishID} with status: ${data.status} ***`);
+                
+            } else {
+                alert(`Error: Fish ID ${fishID} not found in database.`);
+                document.getElementById('fish-quality-status').textContent = "ID Not Found";
+                document.getElementById('fish-quality-status').className = 'quality-status bad';
+            }
+        }
+
+        // Start the QR code scanner when the page loads
+        html5QrCode.start(
+            { facingMode: "environment" }, // Prefer the back camera
+            qrConfig,
+            onScanSuccess,
+            onScanFailure
+        ).catch((err) => {
+            // Handle errors
+            console.error(`Unable to start QR scanner: ${err}`);
+            document.getElementById(qrCodeId).innerHTML = "Camera access denied or no camera found.";
+        });
+    </script>
+
+</body>
+</html>
